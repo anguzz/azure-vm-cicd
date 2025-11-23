@@ -3,6 +3,8 @@
 Automated Azure VM deployment using GitHub Actions and Infrastructure as Code.
 
 # Directroy structure
+
+```
 root/
 ├── .github/
 │   └── workflows/
@@ -16,13 +18,15 @@ root/
 │   └── configure.yml
 ├── .gitignore
 ├── README.md
-# Setup process
+```
 
-Go to 
-https://portal.azure.com/#home
+# Setup process
 
 
 1) Setup an Entra app registration
+
+Go to https://portal.azure.com/#home
+
 - Microsoft Entra ID > App registrations > New registration
 
 - `github-azure-vm-cicd`
@@ -31,14 +35,25 @@ https://portal.azure.com/#home
 
 *For our current use case we do not need Multi-tenant access, Personal Microsoft accounts ,External users, or Redirect URIs*
 
-2) Create a client secret
 
- - Manage > Certificates & Secrets > New client secret 
 
- - Name it and add an expiration date.
- `github-cicd-client-secret`
 
- - Save the Value and secret ID
+2) Enable OIDC Federated Identity
+
+OIDC (OpenID Connect) federated identity is a way for GitHub Actions to log into Azure without using secrets, passwords, or client secrets. It sets up a direct trust between Azure & Github.
+
+Go to  `App registration` > `github-azure-vm-cicd |certifcates & secrets` > `Federated Credentials` > `Add credential`
+ 
+
+- Federated credential scenario : GitHub Actions deploying Azure resources
+- Organization: angusz
+- Repository: azure-vm-cicd
+- Entity type: Branch
+- GitHub branch name: main
+- Credential details: github-oidc-main
+- Description: OIDC federated credential for GitHub Actions (main branch) deploying Azure resources.
+
+
 
 
 3) Create github actions and add secrets
@@ -49,6 +64,9 @@ https://portal.azure.com/#home
 
 It should look something like this:
 ![secrets.png](screenshots/secrets.png)
+
+
+
 
 4) Create github action workflow.
 
@@ -65,7 +83,7 @@ Terraform will automatically create any resources that do not already exist (inc
 
 
 
-5) Add SSH Key to Terraform**
+5) Add SSH Key to Terraform
 
 Terraform needs an SSH **public** key so that *you* can SSH into the VM after it’s created. I happened to generate my key on a Windows machine, but the process works the same on Linux or macOS but the commands might differ a tadbit.
 
