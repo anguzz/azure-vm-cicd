@@ -41,18 +41,9 @@ jobs:
         with:
           terraform_version: 1.6.6 
 
-      # 2. Initialize Terraform and connect to the Remote Backend
       - name: Terraform Init
         working-directory: ./terraform
         run: terraform init
-
-      # 3. Import the existing Resource Group (must run only once)
-      # This fixes the "resource already exists" error.
-      - name: Terraform Import RG
-        working-directory: ./terraform
-        # We can use the environment variables defined at the top of the job
-        run: |
-          terraform import azurerm_resource_group.rg "/subscriptions/${ARM_SUBSCRIPTION_ID}/resourceGroups/rg-devops-demo"
 
       - name: Terraform Plan
         working-directory: ./terraform
