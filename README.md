@@ -46,7 +46,7 @@ Go to  `App registration` > `github-azure-vm-cicd |certifcates & secrets` > `Fed
  
 
 - Federated credential scenario : GitHub Actions deploying Azure resources
-- Organization: angusz
+- Organization: anguzz
 - Repository: azure-vm-cicd
 - Entity type: Branch
 - GitHub branch name: main
