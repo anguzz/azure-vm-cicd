@@ -171,3 +171,11 @@ I plan to also also extend this project by adding additional workflows under `.g
 This adds functionality the repository into a reusable CI/CD-driven Infrastructure-as-Code automation pipeline.
 
 
+# Resources
+https://learn.microsoft.com/en-us/azure/virtual-machines/windows/quick-create-terraform
+
+https://learn.microsoft.com/en-us/azure/virtual-network/ip-services/public-ip-addresses#limitations
+
+https://learn.microsoft.com/en-us/azure/virtual-machines/linux/quick-create-terraform?tabs=azure-cli
+
+https://learn.microsoft.com/en-us/azure/virtual-machines/windows/quick-create-terraform?tabs=azure-cli 

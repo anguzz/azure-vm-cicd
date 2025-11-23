@@ -1,31 +1,17 @@
-variable "resource_group_name" {
-  description = "Name of the Azure resource group"
-  type        = string
-  default     = "rg-devops-demo"
-}
-
-variable "location" {
-  description = "Azure region to deploy resources"
+variable "resource_group_location" {
   type        = string
   default     = "westus2"
+  description = "Location of the resource group."
 }
 
-variable "vm_name" {
-  description = "Virtual machine name"
+variable "resource_group_name_prefix" {
   type        = string
-  default     = "devops-demo-vm"
+  default     = "rg"
+  description = "Prefix of the resource group name that's combined with a random ID so name is unique in your Azure subscription."
 }
 
-variable "vm_size" {
-  description = "VM size"
+variable "username" {
   type        = string
-  default     = "Standard_B1s"
+  description = "The username for the local account that will be created on the new VM."
+  default     = "azureadmin"
 }
-
-variable "admin_username" {
-  description = "Admin username for SSH"
-  type        = string
-  default     = "azureuser"
-}
-
-
