@@ -28,8 +28,4 @@ variable "admin_username" {
   default     = "azureuser"
 }
 
-variable "ssh_public_key_path" {
-  description = "Path to the local SSH public key"
-  type        = string
-  default     = "~/.ssh/id_rsa.pub"
-}
+
