@@ -18,6 +18,12 @@ jobs:
   terraform:
     runs-on: ubuntu-latest
 
+    # Define OIDC variables here so ALL steps (Init, Import, Plan, Apply) can use them.
+    env:
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -29,7 +35,6 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }} 
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          # The authentication token is now available for Terraform
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -39,23 +44,15 @@ jobs:
       # 2. Initialize Terraform and connect to the Remote Backend
       - name: Terraform Init
         working-directory: ./terraform
-        # Pass OIDC environment variables explicitly (often needed for the backend)
-        env:
-          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         run: terraform init
 
       # 3. Import the existing Resource Group (must run only once)
       # This fixes the "resource already exists" error.
       - name: Terraform Import RG
         working-directory: ./terraform
-        env:
-          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        # We can use the environment variables defined at the top of the job
         run: |
           terraform import azurerm_resource_group.rg "/subscriptions/${ARM_SUBSCRIPTION_ID}/resourceGroups/rg-devops-demo"
-        # Set a condition to skip this step once the RG is in state
-        # You can temporarily comment this step out after the first successful run.
 
       - name: Terraform Plan
         working-directory: ./terraform
