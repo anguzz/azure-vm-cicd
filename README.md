@@ -23,7 +23,7 @@ root/
 # Setup process
 
 
-1) Setup an Entra app registration
+### 1) Setup an Entra app registration
 
 Go to https://portal.azure.com/#home
 
@@ -38,7 +38,7 @@ Go to https://portal.azure.com/#home
 
 
 
-2) Enable OIDC Federated Identity
+### 2) Enable OIDC Federated Identity
 
 OIDC (OpenID Connect) federated identity is a way for GitHub Actions to log into Azure without using secrets, passwords, or client secrets. It sets up a direct trust between Azure & Github.
 
@@ -56,7 +56,7 @@ Go to  `App registration` > `github-azure-vm-cicd |certifcates & secrets` > `Fed
 
 
 
-3) Create github actions and add secrets
+### 3) Create github actions and add secrets
 - Under the repo goto `settings`
 - Go to `secrets & variables` > `actions`
 - New Secret
@@ -68,12 +68,12 @@ It should look something like this:
 
 
 
-4) Create github action workflow.
+### 4) Create github action workflow.
 
 The GitHub Actions workflow I created in `.github/workflows/deploy.yml` runs Terraform against the files in the `terraform/` folder:
 
 
-### Terraform Overview
+#### Terraform Overview
 
 - **main.tf** – defines all Azure resources (resource group, network, public IP, NIC, and the Ubuntu VM).
 - **variables.tf** – holds input values such as VM name, region, size, admin username, and SSH key path. You can customize these.
@@ -83,7 +83,7 @@ Terraform will automatically create any resources that do not already exist (inc
 
 
 
-5) Add SSH Key to Terraform
+### 5) Add SSH Key to Terraform
 
 Terraform needs an SSH **public** key so that *you* can SSH into the VM after it’s created. I happened to generate my key on a Windows machine, but the process works the same on Linux or macOS but the commands might differ a tadbit.
 
@@ -123,3 +123,28 @@ admin_ssh_key {
 ```
 
 This ensures Azure injects your SSH public key into the VM so you can SSH later with your private key.
+
+
+
+## Redeploying the VM
+
+To redeploy the VM at any time, go to:
+
+```
+GitHub > Actions > Deploy Azure VM > Run workflow
+```
+
+This will:
+
+* Force a full redeploy
+* Apply any new Terraform changes
+* Recreate the VM if it was deleted in Azure
+* Ensure the VM always matches the state defined in code
+
+I plan to also also extend this project by adding additional workflows under `.github/workflows/` — for example:
+
+* A `destroy.yml` workflow to tear down the environment
+* A workflow that deploys multiple VMs at once
+* A workflow that triggers Ansible for post-configuration
+
+This adds functionality the repository into a reusable CI/CD-driven Infrastructure-as-Code automation pipeline.
