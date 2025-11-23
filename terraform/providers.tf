@@ -1,7 +1,14 @@
 ########################################
-# Terraform Provider
+# Terraform Backend and Provider
 ########################################
 terraform {
+backend "azurerm" {
+    resource_group_name  = "rg-terraform-state"
+    storage_account_name = "anguzzdevopsdemo" 
+    container_name       = "tfstate"
+    key                  = "rg-devops-demo.tfstate" # Name of the state file to be stored
+  }
+  
   required_version = ">=0.12"
 
   required_providers {

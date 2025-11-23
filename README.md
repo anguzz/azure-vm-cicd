@@ -75,9 +75,25 @@ Go to  `App registration` > `github-azure-vm-cicd |certifcates & secrets` > `Fed
 - Description: OIDC federated credential for GitHub Actions (main branch) deploying Azure resources.
 
 
+### 3) Create Azure Storage Account for Remote State
 
+To ensure deployment state is maintained across GitHub Actions runs and to prevent the "resource already exists" error, Terraform state must be stored remotely in a dedicated Azure Storage Account.
 
-### 3) Create github actions and add secrets
+**Note:** This Storage Account must be created **manually** or using a separate, one-time Terraform run, as it is a dependency for all subsequent infrastructure deployments.
+
+#### **Steps:**
+
+1.  Navigate to the Azure Portal and create a new **Resource Group** dedicated to state (e.g., `rg-terraform-state`). (Optional, but recommended for clean separation.)
+2.  Create a **Storage Account** with a globally unique name (e.g., `anguzzdevopsdemo`) inside this Resource Group.
+    * **Account Kind:** General-purpose v2
+    * **Performance:** Standard
+    * **Redundancy:** LRS (Locally-redundant storage)
+3.  Once the Storage Account is created, navigate to the **Containers** blade and create a new container named **`tfstate`**.
+
+This dedicated account is referenced in `terraform/providers.tf` to define the **backend** location.
+![tfbackend](screenshots/tfbackend.png)
+
+### 4) Create github actions and add secrets
 - Under the repo goto `settings`
 - Go to `secrets & variables` > `actions`
 - New Secret
@@ -89,7 +105,7 @@ It should look something like this:
 
 
 
-### 4) Create github action workflow.
+### 5) Create github action workflow.
 
 The GitHub Actions workflow I created in `.github/workflows/deploy.yml` runs Terraform against the files in the `terraform/` folder:
 
@@ -104,7 +120,7 @@ Terraform will automatically create any resources that do not already exist (inc
 
 
 
-### 5) Add SSH Key to Terraform
+### 6) Add SSH Key to Terraform
 
 Terraform needs an SSH **public** key so that *you* can SSH into the VM after it’s created. I happened to generate my key on a Windows machine, but the process works the same on Linux or macOS but the commands might differ a tadbit.
 
