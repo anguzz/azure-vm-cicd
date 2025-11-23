@@ -140,50 +140,6 @@ The GitHub Actions workflow I created in `.github/workflows/deploy.yml` runs Ter
 Terraform will automatically create any resources that do not already exist (including the Resource Group). GitHub Actions handles the deployment by running `terraform init`, `plan`, and `apply` on each push to `main`.
 
 
-
-### 7) Add SSH Key to Terraform
-
-Terraform needs an SSH **public** key so that *you* can SSH into the VM after it’s created. I happened to generate my key on a Windows machine, but the process works the same on Linux or macOS but the commands might differ a tadbit.
-
-Generate the keypair:
-
-```powershell
-C:\Users\Angel> ssh-keygen -t rsa -b 4096
-Generating public/private rsa key pair.
-```
-
-After it finishes, verify and copy your **public** key:
-
-Note: On a linux machine use `cat` rather then `type` 
-
-```powershell
-type C:\Users\Angel\.ssh\id_rsa.pub
-ssh-rsa AAAAB3N.....
-```
-
-Create a file in your repo:
-
-```
-terraform/ssh_key.pub
-```
-
-Paste the entire `ssh-rsa ...` line into it.
-
-The **public** key is safe to commit it does not grant access by itself without the private key.
-
-Terraform references this public key inside `main.tf`:
-
-```terraform
-admin_ssh_key {
-  username   = var.admin_username
-  public_key = file(var.ssh_public_key_path)
-}
-```
-
-This ensures Azure injects your SSH public key into the VM so you can SSH later with your private key.
-
-
-
 ## Redeploying the VM
 
 To redeploy the VM at any time, go to:
@@ -199,13 +155,31 @@ This will:
 * Recreate the VM if it was deleted in Azure
 * Ensure the VM always matches the state defined in code
 
-I plan to also also extend this project by adding additional workflows under `.github/workflows/` — for example:
 
-* A `destroy.yml` workflow to tear down the environment
-* A workflow that deploys multiple VMs at once
-* A workflow that triggers Ansible for post-configuration
 
-This adds functionality the repository into a reusable CI/CD-driven Infrastructure-as-Code automation pipeline.
+##  Deployment  (Working CI/CD Pipeline)
+
+A full end-to-end deployment was successfully executed through GitHub Actions:
+
+* Code pushed to **main**
+* GitHub Actions authenticated to Azure using **OIDC**
+* Terraform ran **init → plan → apply**
+* All Azure resources were created automatically
+* The VM is now reachable via SSH
+* Remote state stored in Azure Storage
+
+**GitHub Actions Run:**
+
+![workflow](screenshots/workflow.png)
+
+**Deployed Resources:**
+
+![rg creation](screenshots/rg.png)
+
+
+
+
+This confirms the workflow is fully functional and can deploy infrastructure consistently from code.
 
 
 # Resources
