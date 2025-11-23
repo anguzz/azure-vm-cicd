@@ -177,9 +177,38 @@ A full end-to-end deployment was successfully executed through GitHub Actions:
 ![rg creation](screenshots/rg.png)
 
 
+##  Connecting to the Deployed VM
+
+Once the pipeline successfully executes, the Virtual Machine (`myVM`) is running and ready for access.
+
+### 1. Connect via Azure CLI (Recommended for Initial Access)
+
+The Azure CLI offers a quick way to establish an SSH connection without manually handling the private key on your local machine, using built-in identity management (assuming you are authenticated locally via `az login`).
+
+![AzureCLI](screenshots/AzureCLI.png)
 
 
-This confirms the workflow is fully functional and can deploy infrastructure consistently from code.
+![VM](screenshots/VM.png)
+
+
+### 2. Connect via SSH Key (Requires Local Private Key)
+
+Alternatively, you can connect directly using the private key that Terraform dynamically generated and stored in your remote state file.
+
+  * **Retrieve the Key:** Run the following commands in your local terminal (ensure you have run `terraform init` and `az login` first):
+
+    ```bash
+    terraform output -raw private_key_pem > mykey.pem
+    # Linux/Mac only:
+    chmod 600 mykey.pem 
+    ```
+
+  * **SSH Command:** Use the key file and the public IP address:
+
+    ```bash
+    ssh -i mykey.pem azureadmin@<VM_PUBLIC_IP_ADDRESS>
+    ```
+
 
 
 # Resources
