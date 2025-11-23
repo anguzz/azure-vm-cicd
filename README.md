@@ -84,15 +84,20 @@ To ensure deployment state is maintained across GitHub Actions runs and to preve
 #### **Steps:**
 
 1.  Navigate to the Azure Portal and create a new **Resource Group** dedicated to state (e.g., `rg-terraform-state`). (Optional, but recommended for clean separation.)
+
 2.  Create a **Storage Account** with a globally unique name (e.g., `anguzzdevopsdemo`) inside this Resource Group.
     * **Account Kind:** General-purpose v2
     * **Performance:** Standard
     * **Redundancy:** LRS (Locally-redundant storage)
+
+![tfbackend](screenshots/tfbackend.png)
+
 3.  Once the Storage Account is created, navigate to the **Containers** blade and create a new container named **`tfstate`**.
 
 This dedicated account is referenced in `terraform/providers.tf` to define the **backend** location.
-![tfbackend](screenshots/tfbackend.png)
 
+
+![createContainer](screenshots/createContainer.png)\
 
 
 ### 4) Grant Storage Data Access
