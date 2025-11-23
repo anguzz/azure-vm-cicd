@@ -22,9 +22,10 @@ provider "azurerm" {
 # Resource Group
 ########################################
 resource "azurerm_resource_group" "rg" {
-  name     = var.resource_group_name
-  location = var.location
+  name     = "rg-devops-demo"
+  location = "westus2"
 }
+
 
 ########################################
 # Virtual Network
@@ -82,7 +83,7 @@ resource "azurerm_linux_virtual_machine" "vm" {
   name                = var.vm_name
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
-  size                = var.vm_size
+  size = "Standard_B1ls"
   admin_username      = var.admin_username
   network_interface_ids = [
     azurerm_network_interface.nic.id
