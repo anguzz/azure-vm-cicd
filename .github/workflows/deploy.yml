@@ -11,8 +11,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  id-token: write  # Crucial: Allows GitHub to issue the OIDC token
-  contents: read   # Allows checkout of the code
+  id-token: write  # Crucial for OIDC authentication
+  contents: read   # Allows checking out the code
 
 jobs:
   terraform:
@@ -20,26 +20,42 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4 # Recommended: Use latest version of checkout
+        uses: actions/checkout@v4
 
+      # 1. Authenticate with Azure using OIDC
       - name: Azure Login (OIDC)
-        uses: azure/login@v2 # Recommended: Use latest version (v2)
+        uses: azure/login@v2
         with:
-          # Pass the credentials for OIDC login
           client-id: ${{ secrets.AZURE_CLIENT_ID }} 
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          # Use 'federated-credentials-file' if using a specific config, 
-          # but typically 'azure/login@v2' automatically detects OIDC flow.
-          
+          # The 'run: terraform init' was removed from this block.
+
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3 # Recommended: Use latest version (v3)
+        uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.6.6 
 
+      # 2. Initialize Terraform, passing OIDC creds explicitly for the backend
       - name: Terraform Init
         working-directory: ./terraform
+        # CRITICAL: Pass OIDC environment variables so the backend can authenticate
+        env:
+          ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
         run: terraform init
+
+      # 3. CRITICAL: Import the existing Resource Group into the new remote state
+      # This step must run after init and before plan/apply.
+      - name: Terraform Import RG
+        working-directory: ./terraform
+        env:
+          ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        run: |
+          # The resource address is azurerm_resource_group.rg
+          # The Azure ID is /subscriptions/.../resourceGroups/rg-devops-demo
+          terraform import azurerm_resource_group.rg "/subscriptions/${ARM_SUBSCRIPTION_ID}/resourceGroups/rg-devops-demo"
 
       - name: Terraform Plan
         working-directory: ./terraform
