@@ -93,7 +93,23 @@ To ensure deployment state is maintained across GitHub Actions runs and to preve
 This dedicated account is referenced in `terraform/providers.tf` to define the **backend** location.
 ![tfbackend](screenshots/tfbackend.png)
 
-### 4) Create github actions and add secrets
+
+
+### 4) Grant Storage Data Access
+
+While the general **Contributor** role allows managing resources, it does **not** grant permission to read or write data *inside* a Storage Account. To allow Terraform to save the state file (`.tfstate`), you must explicitly assign a data-plane role.
+
+**Steps:**
+
+1.  Navigate to the Storage Account you created (e.g., `anguzzdevopsdemo`).
+2.  Open **Access control (IAM)** \> **Add role assignment**.
+3.  Select the **Storage Blob Data Contributor** role.
+4.  Assign it to your App Registration: `github-azure-vm-cicd`.
+
+
+![storageBlobCon](screenshots/storageBlobCon.png)
+
+### 5) Create github actions and add secrets
 - Under the repo goto `settings`
 - Go to `secrets & variables` > `actions`
 - New Secret
@@ -105,7 +121,7 @@ It should look something like this:
 
 
 
-### 5) Create github action workflow.
+### 6) Create github action workflow.
 
 The GitHub Actions workflow I created in `.github/workflows/deploy.yml` runs Terraform against the files in the `terraform/` folder:
 
@@ -120,7 +136,7 @@ Terraform will automatically create any resources that do not already exist (inc
 
 
 
-### 6) Add SSH Key to Terraform
+### 7) Add SSH Key to Terraform
 
 Terraform needs an SSH **public** key so that *you* can SSH into the VM after it’s created. I happened to generate my key on a Windows machine, but the process works the same on Linux or macOS but the commands might differ a tadbit.
 
