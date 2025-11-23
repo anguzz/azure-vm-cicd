@@ -23,6 +23,7 @@ root/
 # Setup process
 
 
+
 ### 1) Setup an Entra app registration
 
 Go to https://portal.azure.com/#home
@@ -35,6 +36,26 @@ Go to https://portal.azure.com/#home
 
 *For our current use case we do not need Multi-tenant access, Personal Microsoft accounts ,External users, or Redirect URIs*
 
+### 2)  Link the App Registration to the Azure Subscription (Assign RBAC Role)
+
+To allow GitHub Actions to deploy Azure resources using OIDC, the App Registration must be granted access to your subscription. 
+
+### **Steps:**
+
+1. Navigate to
+   **Home > Subscriptions > *Azure subscription 1***
+2. Open
+   **Access control (IAM)**
+3. Click **Add → Add role assignment**
+4. Select the **Contributor** role
+5. Click **Next**, then choose:
+   **User, group, or service principal**
+6. Click **Select members** and search for: `github-azure-vm-cicd`
+7. Select it > **Review + assign**
+
+This grants GitHub’s identity permission to create/update Azure resources using Terraform.
+
+![Subscription RBAC](screenshots/subscription.png)
 
 
 
