@@ -1,7 +1,51 @@
 # azure-vm-cicd
 
-Automated Azure VM deployment using GitHub Actions and Infrastructure as Code.
+Automated Azure VM deployment using GitHub Actions and Infrastructure as Code. This project is intentionally designed to deploy **one Azure VM**, with its configuration defined in Terraform and continuously managed through GitHub Actions. The Terraform state tracks this VM so the pipeline can update, recreate, or reconcile changes over time.
 
+### **How This Deployment Model Works**
+
+* Infrastructure is defined as code (IaC) using Terraform.
+* A single VM is created based on values in `variables.tf`.
+* Terraform state stored in Azure Storage ensures consistent updates.
+* Each workflow run validates, plans, and applies changes to **that same VM**.
+
+This repo currently assumes:
+
+* **One VM**
+* **Some hardcoded configurations**
+* **Terraform managed lifecycle**
+* **Long-term stateful management*
+
+# **Future Scaling Options (Conceptual)**
+
+This project currently manages a single VM, but it can be expanded depending on future needs:
+
+### **1. Multiple Persistent VMs**
+
+Terraform can manage several VMs at once using the same state file. Useful for full environments like `vm2`, `web02`, `db01`.
+
+### **2. Modules or Workspaces**
+
+Modules let you reuse the VM definition many times.
+Workspaces allow separate state files per VM or environment.
+Both improve organization as deployments grow.
+
+### **3. Ephemeral / On-Demand VMs**
+
+Terraform is not designed to create a new VM every workflow run, since state becomes unmanageable.
+For disposable or short-lived compute, use tools like:
+
+* Azure CLI
+* Bicep/ARM templates
+* DevTest Labs
+* VM Scale Sets
+* Kubernetes (for containerized workloads)
+
+
+
+
+
+  
 # Directroy structure
 
 ```
