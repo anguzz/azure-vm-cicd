@@ -22,7 +22,8 @@
         state: present
         update_cache: yes
 
-    - name: Install numpy using pip3
-      pip:
-        name: numpy
-        executable: pip3
+    - name: Install system numpy via apt
+      apt:
+        name: python3-numpy
+        state: present
+
