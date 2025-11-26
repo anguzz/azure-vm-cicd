@@ -11,12 +11,6 @@ jobs:
   configure:
     runs-on: ubuntu-latest
     
-    # Define OIDC variables for Terraform commands
-    env: 
-      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -56,12 +50,23 @@ jobs:
       - name: Debug - Check VM_IP value
         run: echo "The fetched VM_IP is - $VM_IP" # Check if IP is fetched
 
-      - name: Build dynamic inventory
+      - name: Get VM Public IP from Terraform (Fix Applied)
         run: |
-          # 1. Build the inventory file
-          echo "[vm]" > ansible/inventory.ini
-          # FIX: Use the key path directly to avoid potential shell variable issues
-          echo "$VM_IP ansible_user=azureadmin ansible_ssh_private_key_file=$HOME/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no'" >> ansible/inventory.ini
+          cd terraform
+          # Use -migrate-state to ensure old state is managed, and -force-copy 
+          # to force connection to the remote backend.
+          terraform init -reconfigure -migrate-state -force-copy
+
+          # Add a check to see if the output is empty
+          VM_IP_ADDRESS=$(terraform output -raw public_ip 2>/dev/null)
+
+          if [ -z "$VM_IP_ADDRESS" ]; then
+            echo "Error: Failed to retrieve public_ip from Terraform state."
+            exit 1
+          fi
+
+          echo "VM_IP=$VM_IP_ADDRESS" >> $GITHUB_ENV
+
           
       - name: Debug - Inventory Contents (Verify no 'exited')
         run: |
