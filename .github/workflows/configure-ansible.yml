@@ -4,14 +4,13 @@ on:
   workflow_dispatch:
 
 permissions:
-  id-token: write # Enables OIDC
+  id-token: write # Enables OIDC for Azure Login
   contents: read
 
 jobs:
   configure:
     runs-on: ubuntu-latest
     
-    # <--- RE-ADDED ENV BLOCK (FIX for OIDC Tenant/Client ID error)
     env: 
       ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
       ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
@@ -21,7 +20,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         
-      # 1. Authenticate with Azure using OIDC (Crucial for backend access)
       - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
@@ -29,19 +27,33 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           
-      # ... (Install Ansible, Add SSH Private Key, Setup Terraform steps remain)
       
+      - name: Install Ansible
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ansible
+
+      - name: Add SSH Private Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.ANSIBLE_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.6
+          
+
       - name: Get VM Public IP from Terraform
         run: |
           cd terraform
-          # This should now succeed because ARM_CLIENT/TENANT_ID are set as env vars
           terraform init -reconfigure -migrate-state -force-copy
 
-          # Capture output and suppress shell errors to avoid Ansible parse issue
           VM_IP_ADDRESS=$(terraform output -raw public_ip 2>/dev/null)
 
           if [ -z "$VM_IP_ADDRESS" ]; then
-            echo "Error: Failed to retrieve public_ip from Terraform state. Check if output 'public_ip' exists."
+            echo "Error: Failed to retrieve public_ip from Terraform state."
             exit 1
           fi
 
@@ -54,17 +66,12 @@ jobs:
         run: |
           echo "[vm]" > ansible/inventory.ini
           echo "$VM_IP ansible_user=azureadmin ansible_ssh_private_key_file=$HOME/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no'" >> ansible/inventory.ini
-          
-      # ... (Debug Inventory Contents, Test SSH Connection, Run Ansible Playbook steps remain)
-      - name: Debug - Inventory Contents (Verify no 'exited')
-        run: |
-          cat ansible/inventory.ini
+
+      - name: Debug - Inventory Contents
+        run: cat ansible/inventory.ini
 
       - name: Test SSH Connection
-        run: |
-          # This should now connect successfully
-          ansible vm -i ansible/inventory.ini -m ping
+        run: ansible vm -i ansible/inventory.ini -m ping
 
       - name: Run Ansible Playbook
-        run: |
-          ansible-playbook -i ansible/inventory.ini ansible/configure-python.yml
+        run: ansible-playbook -i ansible/inventory.ini ansible/configure-python.yml
