@@ -253,34 +253,46 @@ Alternatively, you can connect directly using the private key that Terraform dyn
     ssh -i mykey.pem azureadmin@<VM_PUBLIC_IP_ADDRESS>
     ```
 
+# **Ansible Setup **
 
 
-# Ansible setup
+1. **Terraform generates the SSH keypair**
+   Terraform uses `azapi_resource_action` to create an SSH key.
+   The public key is injected into the VM at build time.
 
-1) Create a key speficially for ansible 
+2. **Terraform remote state stores the private key securely**
+   The private key is available as a sensitive output:
 
-`ssh-keygen -t ed25519 -f ~/.ssh/ansible_key`
+   ```hcl
+   output "private_key_pem" {
+     value     = azapi_resource_action.ssh_public_key_gen.output.privateKey
+     sensitive = true
+   }
+   ```
 
-2) Add key to authorized keys
+3. **GitHub Actions retrieves the private key at runtime**
+   The workflow loads the private key directly from the Terraform output:
 
-```bash
-cat ~/.ssh/ansible_key.pub >> ~/.ssh/authorized_keys
-chmod 600 ~/.ssh/authorized_keys
-```
+   ```bash
+   PRIVATE_KEY=$(terraform output -raw private_key_pem)
+   echo "$PRIVATE_KEY" > ~/.ssh/id_rsa
+   chmod 600 ~/.ssh/id_rsa
+   ```
 
-3) output and copy key
-`cat ~/.ssh/ansible_key`
+4. **A dynamic inventory is generated for Ansible**
+   The VM IP and SSH key are inserted into `ansible/inventory.ini` automatically:
 
-```
------BEGIN OPENSSH PRIVATE KEY-----
-base64 stuff
------END OPENSSH PRIVATE KEY-----
-```
+   ```bash
+   echo "[vm]" > ansible/inventory.ini
+   echo "$VM_IP ansible_user=azureadmin ansible_ssh_private_key_file=$HOME/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no'" >> ansible/inventory.ini
+   ```
 
-4) add to github actions
-GitHub > Settings > Secrets > Actions > New Secret > ANSIBLE_SSH_KEY
+5. **GitHub Actions runs the Ansible playbook**
+   No secrets, no manual keys, no local setup. 
 
-5) Test workflow & configure .yml files.
+
+# Client side validation
+
 
 # Resources
 https://learn.microsoft.com/en-us/azure/virtual-machines/windows/quick-create-terraform

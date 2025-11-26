@@ -137,3 +137,207 @@ on:
       - docs/**
 ```
 
+
+# Ansible issues I ran into
+
+## **1. `terraform init` failed due to incompatible flags**
+
+**Error:**
+
+```
+The -migrate-state and -reconfigure options are mutually-exclusive.
+```
+
+**Cause:**
+I was running:
+
+```bash
+terraform init -reconfigure -migrate-state -force-copy
+```
+
+These arguments cannot be used together.
+
+**Fix:**
+Use a clean initialization:
+
+```bash
+terraform init
+```
+
+---
+
+## **2. Wrong Terraform Output Variable (`public_ip` vs `public_ip_address`)**
+
+**Error:**
+GitHub Actions failed with exit 1 when fetching the IP:
+
+```
+terraform output -raw public_ip
+```
+
+**Cause:**
+My actual Terraform output was named:
+
+```hcl
+output "public_ip_address" { ... }
+```
+
+**Fix:**
+Update the workflow:
+
+```bash
+terraform output -raw public_ip_address
+```
+
+---
+
+## **3. SSH Authentication Failure (`Permission denied (publickey)`)**
+
+**Error:**
+
+```
+Permission denied (publickey)
+```
+
+**Cause:**
+The VM was created using **Terraform’s auto-generated SSH key**, but the workflow was trying to connect with **my custom GitHub secret key**, which Azure does NOT trust.
+
+Azure only accepted the Terraform key injected during VM creation.
+
+**Fix:**
+Load the Terraform-generated private key from state:
+
+```bash
+PRIVATE_KEY=$(terraform output -raw private_key_pem)
+echo "$PRIVATE_KEY" > ~/.ssh/id_rsa
+chmod 600 ~/.ssh/id_rsa
+```
+
+---
+
+## **4. Build Failed Because Terraform Outputs Were Empty**
+
+**Error:**
+
+```
+Error: Failed to retrieve public_ip_address from Terraform state.
+```
+
+**Cause:**
+Terraform couldn't read remote state until I removed the bad init flags and ensured OIDC login was done before accessing state.
+
+**Fix:**
+Ensure workflow order:
+
+1. `azure/login@v2`
+2. `setup-terraform`
+3. `terraform init`
+4. `terraform output -raw`
+
+---
+
+## **5. SSH Not Ready (Cloud-Init Not Finished)**
+
+**Error:**
+
+```
+Timed out waiting for SSH
+```
+
+**Cause:**
+Azure Ubuntu VMs need ~20–60 seconds for cloud-init to finish before SSH is fully ready.
+
+**Fix:**
+Add a retry loop:
+
+```bash
+for i in {1..12}; do
+  if nc -zv "$VM_IP" 22; then exit 0; fi
+  sleep 10
+done
+```
+
+---
+
+## **6. Ansible Inventory Built Before VM_IP Was Exported**
+
+**Symptoms:**
+
+* Inventory had an empty IP
+* SSH connection failed
+* Ansible ping failed
+
+**Cause:**
+The `$VM_IP` env variable wasn’t set until after fixing the Terraform output step.
+
+**Fix:**
+Write to GitHub environment correctly:
+
+```bash
+echo "VM_IP=$VM_IP_ADDRESS" >> $GITHUB_ENV
+```
+
+---
+
+## **7. Inventory Corruption ("got: exited")**
+
+**Error:**
+
+```
+Failed to parse inventory: Expected key=value host variable assignment, got: exited
+```
+
+**Cause:**
+When the `terraform output` command failed (exited with code 1), the shell captured the error message string (e.g., "Error: Terraform exited...") into the `$VM_IP` variable. This error string was then written into `inventory.ini`, creating invalid syntax that Ansible couldn't read.
+
+**Fix:**
+Add error checking before writing to the inventory:
+
+```bash
+if [ -z "$VM_IP_ADDRESS" ]; then exit 1; fi
+```
+
+-----
+
+## **8. Missing Dependencies (Exit Code 127)**
+
+**Error:**
+
+```
+line 3: terraform: command not found
+Error: Process completed with exit code 127
+```
+
+**Cause:**
+I accidentally removed the `hashicorp/setup-terraform` and `apt-get install ansible` steps while cleaning up the workflow. GitHub Actions runners are ephemeral (fresh) every time, so tools must be installed on *every* run.
+
+**Fix:**
+Restore the installation steps:
+
+```yaml
+- uses: hashicorp/setup-terraform@v3
+- run: sudo apt-get install -y ansible
+```
+
+-----
+
+## **10. SSH Host Key Verification**
+
+**Potential Error:**
+(Prevented proactively, but worth noting) The workflow would hang or fail asking to verify the host authenticity:
+
+```
+The authenticity of host 'x.x.x.x' can't be established.
+Are you sure you want to continue connecting (yes/no)?
+```
+
+**Cause:**
+The runner is fresh and doesn't know the new VM's SSH fingerprint. In an automated CI/CD environment, we cannot interactively type "yes".
+
+**Fix:**
+Disable strict host checking in the Ansible inventory command:
+
+```bash
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+```
+
