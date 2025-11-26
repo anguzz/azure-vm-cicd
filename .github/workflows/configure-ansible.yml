@@ -3,14 +3,32 @@ name: Configure VM With Ansible
 on:
   workflow_dispatch:
 
+permissions: # <--- ADDED THESE PERMISSIONS FOR OIDC
+  id-token: write # Enables OIDC
+  contents: read
+
 jobs:
   configure:
     runs-on: ubuntu-latest
+    
+    # Define OIDC variables for Terraform commands
+    env: 
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
+        
+      # 1. Authenticate with Azure using OIDC (Crucial for backend access)
+      - name: Azure Login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }} 
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          
       - name: Install Ansible
         run: |
           sudo apt-get update
@@ -27,20 +45,31 @@ jobs:
         with:
           terraform_version: 1.6.6
 
-      - name: Get VM Public IP from Terraform
+      - name: Get VM Public IP from Terraform (Fix Applied)
         run: |
           cd terraform
-          terraform init -backend=false -reconfigure
+          # **FIX**: Remove -backend=false and use -reconfigure to force 
+          # connecting to the Azure backend to read the state file.
+          terraform init -reconfigure
           echo "VM_IP=$(terraform output -raw public_ip)" >> $GITHUB_ENV
+
+      - name: Debug - Check VM_IP value
+        run: echo "The fetched VM_IP is - $VM_IP" # Check if IP is fetched
 
       - name: Build dynamic inventory
         run: |
-          SSH_KEY="$HOME/.ssh/id_rsa"
+          # 1. Build the inventory file
           echo "[vm]" > ansible/inventory.ini
-          echo "${VM_IP} ansible_user=azureadmin ansible_ssh_private_key_file=${SSH_KEY} ansible_ssh_common_args='-o StrictHostKeyChecking=no'" >> ansible/inventory.ini
+          # FIX: Use the key path directly to avoid potential shell variable issues
+          echo "$VM_IP ansible_user=azureadmin ansible_ssh_private_key_file=$HOME/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no'" >> ansible/inventory.ini
+          
+      - name: Debug - Inventory Contents (Verify no 'exited')
+        run: |
+          cat ansible/inventory.ini
 
       - name: Test SSH Connection
         run: |
+          # This should now connect successfully
           ansible vm -i ansible/inventory.ini -m ping
 
       - name: Run Ansible Playbook
