@@ -1,0 +1,39 @@
+name: Configure VM With Ansible
+
+# MANUAL RUN ONLY
+on:
+  workflow_dispatch:
+
+jobs:
+  configure:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Ansible
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ansible
+
+      - name: Add SSH Private Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.ANSIBLE_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Get VM Public IP from Terraform
+        run: |
+          cd terraform
+          terraform init -backend=false
+          echo "VM_IP=$(terraform output -raw public_ip)" >> $GITHUB_ENV
+
+      - name: Build dynamic inventory
+        run: |
+          echo "[vm]" > ansible/inventory.ini
+          echo "${VM_IP} ansible_user=azureadmin ansible_ssh_private_key_file=~/.ssh/id_rsa" >> ansible/inventory.ini
+
+      - name: Run Ansible Playbook
+        run: |
+          ansible-playbook -i ansible/inventory.ini ansible/configure-python.yml

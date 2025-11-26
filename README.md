@@ -255,6 +255,33 @@ Alternatively, you can connect directly using the private key that Terraform dyn
 
 
 
+# Ansible setup
+
+1) Create a key speficially for ansible 
+
+`ssh-keygen -t ed25519 -f ~/.ssh/ansible_key`
+
+2) Add key to authorized keys
+
+```bash
+cat ~/.ssh/ansible_key.pub >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+```
+
+3) output and copy key
+`cat ~/.ssh/ansible_key`
+
+```
+-----BEGIN OPENSSH PRIVATE KEY-----
+base64 stuff
+-----END OPENSSH PRIVATE KEY-----
+```
+
+4) add to github actions
+GitHub > Settings > Secrets > Actions > New Secret > ANSIBLE_SSH_KEY
+
+5) Test workflow & configure .yml files.
+
 # Resources
 https://learn.microsoft.com/en-us/azure/virtual-machines/windows/quick-create-terraform
 
