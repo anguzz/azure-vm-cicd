@@ -11,6 +11,7 @@ jobs:
   configure:
     runs-on: ubuntu-latest
     
+    # Environment variables required for Terraform OIDC Backend
     env: 
       ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
       ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
@@ -27,7 +28,6 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           
-      
       - name: Install Ansible
         run: |
           sudo apt-get update
@@ -44,11 +44,11 @@ jobs:
         with:
           terraform_version: 1.6.6
           
-
       - name: Get VM Public IP from Terraform
         run: |
           cd terraform
-          terraform init -reconfigure -migrate-state -force-copy
+
+          terraform init -reconfigure
 
           VM_IP_ADDRESS=$(terraform output -raw public_ip 2>/dev/null)
 
