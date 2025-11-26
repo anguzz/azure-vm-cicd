@@ -1,14 +1,6 @@
 name: Deploy Azure VM with Terraform
 
 on:
-  push:
-    branches:
-      - main
-    paths-ignore:
-      - README.md
-      - docs/**
-      - "*.md"
-      - "screenshots/**"
   workflow_dispatch:
 
 permissions:
