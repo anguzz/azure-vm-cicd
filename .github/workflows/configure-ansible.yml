@@ -48,12 +48,12 @@ jobs:
         run: |
           cd terraform
 
-          terraform init -reconfigure
+          terraform init
 
-          VM_IP_ADDRESS=$(terraform output -raw public_ip 2>/dev/null)
+          VM_IP_ADDRESS=$(terraform output -raw public_ip_address 2>/dev/null)
 
           if [ -z "$VM_IP_ADDRESS" ]; then
-            echo "Error: Failed to retrieve public_ip from Terraform state."
+            echo "Error: Failed to retrieve public_ip_address from Terraform state."
             exit 1
           fi
 
