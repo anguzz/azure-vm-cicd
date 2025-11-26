@@ -1,6 +1,5 @@
 name: Configure VM With Ansible
 
-# MANUAL RUN ONLY
 on:
   workflow_dispatch:
 
@@ -22,7 +21,7 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.ANSIBLE_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -31,13 +30,18 @@ jobs:
       - name: Get VM Public IP from Terraform
         run: |
           cd terraform
-          terraform init -backend=false
+          terraform init -backend=false -reconfigure
           echo "VM_IP=$(terraform output -raw public_ip)" >> $GITHUB_ENV
 
       - name: Build dynamic inventory
         run: |
+          SSH_KEY="$HOME/.ssh/id_rsa"
           echo "[vm]" > ansible/inventory.ini
-          echo "${VM_IP} ansible_user=azureadmin ansible_ssh_private_key_file=~/.ssh/id_rsa" >> ansible/inventory.ini
+          echo "${VM_IP} ansible_user=azureadmin ansible_ssh_private_key_file=${SSH_KEY} ansible_ssh_common_args='-o StrictHostKeyChecking=no'" >> ansible/inventory.ini
+
+      - name: Test SSH Connection
+        run: |
+          ansible vm -i ansible/inventory.ini -m ping
 
       - name: Run Ansible Playbook
         run: |
