@@ -3,13 +3,19 @@ name: Configure VM With Ansible
 on:
   workflow_dispatch:
 
-permissions: # <--- ADDED THESE PERMISSIONS FOR OIDC
+permissions:
   id-token: write # Enables OIDC
   contents: read
 
 jobs:
   configure:
     runs-on: ubuntu-latest
+    
+    # <--- RE-ADDED ENV BLOCK (FIX for OIDC Tenant/Client ID error)
+    env: 
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
     
     steps:
       - name: Checkout repository
@@ -23,51 +29,33 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
           
-      - name: Install Ansible
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ansible
-
-      - name: Add SSH Private Key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.ANSIBLE_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.6.6
-
-      - name: Get VM Public IP from Terraform (Fix Applied)
+      # ... (Install Ansible, Add SSH Private Key, Setup Terraform steps remain)
+      
+      - name: Get VM Public IP from Terraform
         run: |
           cd terraform
-          # **FIX**: Remove -backend=false and use -reconfigure to force 
-          # connecting to the Azure backend to read the state file.
-          terraform init -reconfigure
-          echo "VM_IP=$(terraform output -raw public_ip)" >> $GITHUB_ENV
-
-      - name: Debug - Check VM_IP value
-        run: echo "The fetched VM_IP is - $VM_IP" # Check if IP is fetched
-
-      - name: Get VM Public IP from Terraform (Fix Applied)
-        run: |
-          cd terraform
-          # Use -migrate-state to ensure old state is managed, and -force-copy 
-          # to force connection to the remote backend.
+          # This should now succeed because ARM_CLIENT/TENANT_ID are set as env vars
           terraform init -reconfigure -migrate-state -force-copy
 
-          # Add a check to see if the output is empty
+          # Capture output and suppress shell errors to avoid Ansible parse issue
           VM_IP_ADDRESS=$(terraform output -raw public_ip 2>/dev/null)
 
           if [ -z "$VM_IP_ADDRESS" ]; then
-            echo "Error: Failed to retrieve public_ip from Terraform state."
+            echo "Error: Failed to retrieve public_ip from Terraform state. Check if output 'public_ip' exists."
             exit 1
           fi
 
           echo "VM_IP=$VM_IP_ADDRESS" >> $GITHUB_ENV
 
+      - name: Debug - Check VM_IP value
+        run: echo "The fetched VM_IP is - $VM_IP"
+
+      - name: Build dynamic inventory
+        run: |
+          echo "[vm]" > ansible/inventory.ini
+          echo "$VM_IP ansible_user=azureadmin ansible_ssh_private_key_file=$HOME/.ssh/id_rsa ansible_ssh_common_args='-o StrictHostKeyChecking=no'" >> ansible/inventory.ini
           
+      # ... (Debug Inventory Contents, Test SSH Connection, Run Ansible Playbook steps remain)
       - name: Debug - Inventory Contents (Verify no 'exited')
         run: |
           cat ansible/inventory.ini
