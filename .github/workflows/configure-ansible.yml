@@ -4,63 +4,64 @@ on:
   workflow_dispatch:
 
 permissions:
-  id-token: write # Enables OIDC for Azure Login
+  id-token: write   
   contents: read
 
 jobs:
   configure:
     runs-on: ubuntu-latest
     
-    # Environment variables required for Terraform OIDC Backend
     env: 
       ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
       ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
       ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-    
+
     steps:
+
       - name: Checkout repository
         uses: actions/checkout@v4
-        
+
       - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }} 
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          
+
       - name: Install Ansible
         run: |
           sudo apt-get update
           sudo apt-get install -y ansible
 
-      - name: Add SSH Private Key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.ANSIBLE_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.6.6
-          
-      - name: Get VM Public IP from Terraform
+
+      - name: Load Terraform Outputs (VM IP + SSH Private Key)
         run: |
           cd terraform
 
-          terraform init
+          # Initialize Terraform backend
+          terraform init -input=false
 
-          VM_IP_ADDRESS=$(terraform output -raw public_ip_address 2>/dev/null)
+          # Fetch public IP
+          VM_IP_ADDRESS=$(terraform output -raw public_ip_address)
 
-          if [ -z "$VM_IP_ADDRESS" ]; then
-            echo "Error: Failed to retrieve public_ip_address from Terraform state."
-            exit 1
-          fi
+          # Fetch matching private key (Terraform-generated)
+          PRIVATE_KEY=$(terraform output -raw private_key_pem)
 
+
+          # Save key to SSH
+          mkdir -p ~/.ssh
+          echo "$PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+          # Export VM IP
           echo "VM_IP=$VM_IP_ADDRESS" >> $GITHUB_ENV
 
-      - name: Debug - Check VM_IP value
-        run: echo "The fetched VM_IP is - $VM_IP"
+      - name: Debug - Show VM IP
+        run: echo "Using VM IP- $VM_IP"
 
       - name: Build dynamic inventory
         run: |
@@ -69,6 +70,20 @@ jobs:
 
       - name: Debug - Inventory Contents
         run: cat ansible/inventory.ini
+
+      - name: Wait for SSH (cloud-init warmup)
+        run: |
+          echo "Waiting for SSH..."
+          for i in {1..12}; do
+            if nc -zv "$VM_IP" 22; then
+              echo "SSH is ready!"
+              exit 0
+            fi
+            echo "SSH not ready yet... retrying in 10s"
+            sleep 10
+          done
+          echo "ERROR: SSH did not become ready in time"
+          exit 1
 
       - name: Test SSH Connection
         run: ansible vm -i ansible/inventory.ini -m ping
