@@ -290,8 +290,17 @@ Alternatively, you can connect directly using the private key that Terraform dyn
 5. **GitHub Actions runs the Ansible playbook**
    No secrets, no manual keys, no local setup. 
 
+## Build validation
 
-# Client side validation
+<img width="1436" height="442" alt="image" src="https://github.com/user-attachments/assets/89621843-b832-43fc-aa78-878b4dfec3b9" />
+
+## Client side validation
+
+As can be seen below all the dependencies in our `configure-python.yml` playbook were installed.
+
+<img width="689" height="332" alt="image" src="https://github.com/user-attachments/assets/844b1be0-fd63-4565-878d-ed8d13e48ba1" />
+<img width="1385" height="563" alt="image" src="https://github.com/user-attachments/assets/d8dceb73-2faf-42f6-8bab-6f2681d29e14" />
+
 
 
 # Resources
