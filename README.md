@@ -53,14 +53,17 @@ root/
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml
+│       └── configure-ansible.yml
 ├── terraform/
 │   ├── main.tf
 │   ├── variables.tf
 │   └── outputs.tf
-├── ansible/ (future enhancment)
-│   ├── inventory.ini
-│   └── configure.yml
-├── .gitignore
+│   └── providers.tf
+│   └── ssh.tf
+│   └── ssh_key.pub
+├── ansible/ 
+│   ├── configure-python.yml
+│   
 ├── README.md
 ```
 
